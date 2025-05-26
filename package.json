@@ -1,0 +1,28 @@
+{
+  "name": "vision-earth",
+  "version": "1.0.0",
+  "description": "VisionEarth - Interactive 3D globe with environmental data visualization",
+  "main": "index.js",
+  "scripts": {
+    "start": "cd frontend && npm start",
+    "build": "cd frontend && npm run build",
+    "install:all": "npm install && cd frontend && npm install",
+    "test": "cd frontend && npm test"
+  },
+  "keywords": [
+    "earth",
+    "visualization",
+    "satellite",
+    "environmental",
+    "cesium",
+    "3d"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/material": "^7.1.0",
+    "cesium": "^1.110.0"
+  }
+}
