@@ -1,8 +1,21 @@
-import type { Viewer as CesiumViewerType } from 'cesium';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Box, Paper, Typography, Slider, FormControl, InputLabel, Select, MenuItem, SelectChangeEvent, Stack, Chip, IconButton, TextField, Autocomplete, CircularProgress } from '@mui/material';
-import { Timeline, Layers, Opacity, PlayArrow, Pause, ZoomIn, ZoomOut, Search, AddCircleOutline } from '@mui/icons-material';
-import { Ion, Viewer, createWorldTerrainAsync, createOsmBuildingsAsync, Cartesian3, JulianDate, Clock, ClockRange, TimeIntervalCollection, TimeInterval, ImageryLayer, WebMapServiceImageryProvider, GeoJsonDataSource, Color, ScreenSpaceEventHandler, ScreenSpaceEventType, defined, Rectangle, Math as CesiumMath } from 'cesium';
+import {
+  Box, Paper, Typography, Slider, FormControl, InputLabel,
+  Select, MenuItem, SelectChangeEvent, Stack, Chip,
+  IconButton, TextField, Autocomplete, CircularProgress
+} from '@mui/material';
+import {
+  Timeline, Layers, Opacity, PlayArrow, Pause,
+  ZoomIn, ZoomOut, Search, AddCircleOutline
+} from '@mui/icons-material';
+import {
+  Ion, Viewer, createWorldTerrainAsync, createOsmBuildingsAsync, PolygonGraphics,
+  Cartesian3, JulianDate, Clock, ClockRange,
+  TimeIntervalCollection, TimeInterval, ImageryLayer,
+  WebMapServiceImageryProvider, GeoJsonDataSource, Color,
+  ColorMaterialProperty, ConstantProperty, ScreenSpaceEventHandler,
+  ScreenSpaceEventType, defined, Rectangle, Math as CesiumMath
+} from 'cesium';
 
 // Import the CesiumComponentLibrary types
 // Note: In a full implementation you'd use the Resium component library
@@ -59,7 +72,7 @@ const EarthViewerPage: React.FC = () => {
     'Mediterranean Sea': [12.0, 38.0, 15.0, 41.0]
   };
 
-  const viewerRef = useRef<Cesium.Viewer | null>(null);
+  const viewerRef = useRef<Viewer | null>(null);
   const cesiumContainerRef = useRef<HTMLDivElement>(null);
 
   // Configure Cesium Ion access token
@@ -286,27 +299,24 @@ const EarthViewerPage: React.FC = () => {
           // Add weather data as a WMS layer or heatmap
           // This is a simplified example - in a real implementation,
           // you would create a proper visualization for the heatmap data
-          if (heatmapData && heatmapData.grid_points.length > 0) {
-            // For demonstration, we'll add a WMS layer as a placeholder
-            // In a real implementation, you would render the heatmap data
-            // using Cesium's entity API or a custom primitive
-            const layer = new ImageryLayer(
-              new WebMapServiceImageryProvider({
-                url: 'https://neo.gsfc.nasa.gov/wms/wms',
-                layers: 'MOD_LSTD_CLIM_M',
-                parameters: {
-                  transparent: 'true',
-                  format: 'image/png'
-                }
-              }),
-              {
-                alpha: opacity / 100
+          const layer = new ImageryLayer(
+            new WebMapServiceImageryProvider({
+              url: 'https://neo.gsfc.nasa.gov/wms/wms',
+              layers: 'MOD_LSTD_CLIM_M',
+              parameters: {
+                transparent: 'true',
+                format: 'image/png'
               }
-            );
-            
-            viewerRef.current.scene.imageryLayers.add(layer);
-            layer.name = 'weather-layer';
-          }
+            }),
+            {
+              alpha: opacity / 100
+            }
+          );
+          
+          viewerRef.current.scene.imageryLayers.add(layer);
+          // Assign custom metadata safely
+          (layer as any)._layerName = 'weather-layer';
+          
         }
       } else if (dataLayer === 'anomalies') {
         const params = {
@@ -356,15 +366,16 @@ const EarthViewerPage: React.FC = () => {
             viewerRef.current.dataSources.add(dataSource);
             
             // Style the entities based on anomaly type and severity
-            dataSource.entities.values.forEach(entity => {
-              if (entity.properties?.severity?.getValue() === 'high') {
-                if (entity.polygon) {
-                  entity.polygon.material = Color.RED.withAlpha(0.7);
-                  entity.polygon.outlineColor = Color.RED;
-                  entity.polygon.outlineWidth = 2;
-                }
+            dataSource.entities.values.forEach((entity) => {
+              const severity = entity.properties?.severity?.getValue();
+              if (severity === 'high' && entity.polygon) {
+                // Apply styling directly without instanceof check
+                entity.polygon.material = new ColorMaterialProperty(Color.RED.withAlpha(0.7));
+                entity.polygon.outlineColor = new ConstantProperty(Color.RED);
+                entity.polygon.outlineWidth = new ConstantProperty(2);
               }
             });
+            
           }
         }
       }
@@ -389,7 +400,8 @@ const EarthViewerPage: React.FC = () => {
       const imageryLayers = viewerRef.current.scene.imageryLayers;
       for (let i = 0; i < imageryLayers.length; i++) {
         const layer = imageryLayers.get(i);
-        if (layer.name === 'weather-layer') {
+        // Use custom property to identify weather layers
+        if ((layer as any)._layerName === 'weather-layer') {
           imageryLayers.remove(layer);
           i--; // Adjust index after removal
         }
@@ -400,7 +412,8 @@ const EarthViewerPage: React.FC = () => {
       // Remove anomaly data sources
       for (let i = 0; i < viewerRef.current.dataSources.length; i++) {
         const dataSource = viewerRef.current.dataSources.get(i);
-        if (dataSource.name === 'anomalies') {
+        // Use type assertion for dataSource.name
+        if ((dataSource as any).name === 'anomalies') {
           viewerRef.current.dataSources.remove(dataSource);
           i--; // Adjust index after removal
         }
@@ -469,7 +482,8 @@ const EarthViewerPage: React.FC = () => {
       const imageryLayers = viewerRef.current.scene.imageryLayers;
       for (let i = 0; i < imageryLayers.length; i++) {
         const layer = imageryLayers.get(i);
-        if (layer.name === 'weather-layer') {
+        // Use custom property to identify weather layers
+        if ((layer as any)._layerName === 'weather-layer') {
           layer.alpha = value / 100;
         }
       }
@@ -478,11 +492,12 @@ const EarthViewerPage: React.FC = () => {
       const dataSources = viewerRef.current.dataSources;
       for (let i = 0; i < dataSources.length; i++) {
         const dataSource = dataSources.get(i);
-        if (dataSource.name === 'satellite-footprints') {
+        // Use type assertion for dataSource.name
+        if ((dataSource as any).name === 'satellite-footprints') {
           dataSource.entities.values.forEach(entity => {
             if (entity.polygon) {
               const color = Color.BLUE.withAlpha(value / 100 * 0.3);
-              entity.polygon.material = color;
+              entity.polygon.material = new ColorMaterialProperty(color);
             }
           });
         }
@@ -492,18 +507,19 @@ const EarthViewerPage: React.FC = () => {
       const dataSources = viewerRef.current.dataSources;
       for (let i = 0; i < dataSources.length; i++) {
         const dataSource = dataSources.get(i);
-        if (dataSource.name === 'anomalies') {
+        // Use type assertion for dataSource.name
+        if ((dataSource as any).name === 'anomalies') {
           dataSource.entities.values.forEach(entity => {
             if (entity.polygon) {
               const alphaValue = value / 100 * 0.5;
               const severity = entity.properties?.severity?.getValue();
               
               if (severity === 'high') {
-                entity.polygon.material = Color.RED.withAlpha(alphaValue * 1.4);
+                entity.polygon.material = new ColorMaterialProperty(Color.RED.withAlpha(alphaValue * 1.4));
               } else if (severity === 'medium') {
-                entity.polygon.material = Color.ORANGE.withAlpha(alphaValue * 1.2);
+                entity.polygon.material = new ColorMaterialProperty(Color.ORANGE.withAlpha(alphaValue * 1.2));
               } else {
-                entity.polygon.material = Color.YELLOW.withAlpha(alphaValue);
+                entity.polygon.material = new ColorMaterialProperty(Color.YELLOW.withAlpha(alphaValue));
               }
             }
           });
