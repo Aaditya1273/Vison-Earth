@@ -1,8 +1,12 @@
+import type { Viewer as CesiumViewerType } from 'cesium';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Box, Paper, Typography, Slider, FormControl, InputLabel, Select, MenuItem, SelectChangeEvent, Stack, Chip, IconButton, TextField, Autocomplete, CircularProgress } from '@mui/material';
 import { Timeline, Layers, Opacity, PlayArrow, Pause, ZoomIn, ZoomOut, Search, AddCircleOutline } from '@mui/icons-material';
-import { Ion, Viewer, createWorldTerrain, createOsmBuildingsAsync, Cartesian3, JulianDate, Clock, ClockRange, TimeIntervalCollection, TimeInterval, ImageryLayer, WebMapServiceImageryProvider, GeoJsonDataSource, Color, ScreenSpaceEventHandler, ScreenSpaceEventType, defined, Rectangle, Math as CesiumMath } from 'cesium';
-import { Viewer as CesiumViewer } from 'resium';
+import { Ion, Viewer, createWorldTerrainAsync, createOsmBuildingsAsync, Cartesian3, JulianDate, Clock, ClockRange, TimeIntervalCollection, TimeInterval, ImageryLayer, WebMapServiceImageryProvider, GeoJsonDataSource, Color, ScreenSpaceEventHandler, ScreenSpaceEventType, defined, Rectangle, Math as CesiumMath } from 'cesium';
+
+// Import the CesiumComponentLibrary types
+// Note: In a full implementation you'd use the Resium component library
+// but for now we're using the direct Cesium API
 
 // Import the SpatialDataClient
 import { SpatialDataClient, SatelliteImage, WeatherData, EnvironmentalAnomaly } from '../api/SpatialDataClient';
@@ -112,7 +116,7 @@ const EarthViewerPage: React.FC = () => {
         
         // Create the Cesium Viewer
         const viewer = new Viewer(cesiumContainerRef.current, {
-          terrainProvider: createWorldTerrain(),
+          // Initialize without terrain, we'll add it after creation
           timeline: true,
           animation: true,
           sceneModePicker: true,
@@ -159,6 +163,15 @@ const EarthViewerPage: React.FC = () => {
 
         // Store the viewer reference
         viewerRef.current = viewer;
+        
+        // Add terrain
+        createWorldTerrainAsync().then(terrain => {
+          if (viewerRef.current) {
+            viewerRef.current.terrainProvider = terrain;
+          }
+        }).catch(error => {
+          console.error('Error loading terrain:', error);
+        });
       } catch (error) {
         console.error("Error initializing Cesium viewer:", error);
         setLoading(false);
