@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+  <title>Cesium Test</title>
+  <!-- Include the CesiumJS JavaScript and CSS files -->
+  <script src="cesium/Cesium.js"></script>
+  <link href="cesium/Widgets/widgets.css" rel="stylesheet">
+  <style>
+    html, body, #cesiumContainer {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <div id="cesiumContainer"></div>
+  <script>
+    // Your access token from Cesium ion
+    Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJlYWE1OWUxNy1mMWY0LTQzN2YtOGNkNC0yYTVmZjEwZGJmM2QiLCJpZCI6MTYyMTY3LCJpYXQiOjE2OTY5MDk2MTZ9.jaESQs38ACb1-OXgPt-FA-lARxYzBr_NLzEEZ7C27KQ';
+
+    // Initialize the Cesium Viewer in the HTML element with the `cesiumContainer` ID
+    const viewer = new Cesium.Viewer('cesiumContainer', {
+      terrainProvider: Cesium.createWorldTerrain(),
+      animation: true,
+      baseLayerPicker: true,
+      fullscreenButton: true,
+      vrButton: false,
+      geocoder: true,
+      homeButton: true,
+      infoBox: true,
+      sceneModePicker: true,
+      selectionIndicator: true,
+      timeline: true,
+      navigationHelpButton: true
+    });
+
+    // Add Cesium OSM Buildings
+    viewer.scene.primitives.add(Cesium.createOsmBuildings());
+
+    // Fly the camera to San Francisco
+    viewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(-122.4, 37.8, 10000),
+      orientation: {
+        heading: Cesium.Math.toRadians(0),
+        pitch: Cesium.Math.toRadians(-20),
+        roll: 0.0
+      }
+    });
+  </script>
+</body>
+</html>

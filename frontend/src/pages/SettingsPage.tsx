@@ -12,6 +12,7 @@ import {
   Button,
   Grid,
   Select,
+  SelectChangeEvent,
   MenuItem,
   InputLabel,
   FormControl,
@@ -37,7 +38,15 @@ const SettingsPage: React.FC = () => {
       weather: '/api/v1/weather',
       satellite: '/api/v1/satellite',
       anomalies: '/api/v1/anomalies'
-    }
+    },
+    highResImagery: false,
+    weatherOverlay: false,
+    countryBorders: false,
+    autoRefresh: false,
+    dataSource: 'NASA Earth Observations',
+    limitFrameRate: false,
+    reduceAnimations: false,
+    cloudSync: false
   });
 
   const [saved, setSaved] = useState(false);
@@ -51,12 +60,29 @@ const SettingsPage: React.FC = () => {
   };
 
   const handleNestedChange = (parent: string, key: string, value: any) => {
-    setSettings({
-      ...settings,
+    setSettings((prevSettings) => ({
+      ...prevSettings,
       [parent]: {
-        ...settings[parent as keyof typeof settings],
+        ...(prevSettings[parent as keyof typeof prevSettings] as Record<string, any>),
         [key]: value
       }
+    }));
+    setSaved(false);
+  };
+
+
+  const handleCheckboxChange = (setting: keyof typeof settings) => {
+    setSettings({
+      ...settings,
+      [setting]: !settings[setting as keyof typeof settings]
+    });
+    setSaved(false);
+  };
+
+  const handleSelectChange = (event: SelectChangeEvent) => {
+    setSettings({
+      ...settings,
+      dataSource: event.target.value as string
     });
     setSaved(false);
   };
@@ -70,6 +96,42 @@ const SettingsPage: React.FC = () => {
     setTimeout(() => {
       setSaved(false);
     }, 3000);
+  };
+
+  const clearCache = () => {
+    console.log('Clearing cache...');
+    // Implement cache clearing logic
+  };
+
+  const resetSettings = () => {
+    setSettings({
+      theme: 'dark',
+      dataSourceRefreshInterval: 15,
+      enableNotifications: true,
+      notificationsForAnomalyDetection: true,
+      notificationsForDataUpdates: false,
+      maxQualityMode: false,
+      defaultLocation: {
+        lat: 37.7749,
+        lng: -122.4194,
+        zoom: 4
+      },
+      cesiumToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJlYWE1OWUxNy1mMWY0LTQzN2YtOGNkNC0yYTVmZjEwZGJmM2QiLCJpZCI6MTYyMTY3LCJpYXQiOjE2OTY5MDk2MTZ9.jaESQs38ACb1-OXgPt-FA-lARxYzBr_NLzEEZ7C27KQ',
+      apiEndpoints: {
+        weather: '/api/v1/weather',
+        satellite: '/api/v1/satellite',
+        anomalies: '/api/v1/anomalies'
+      },
+      dataSource: 'NASA Earth Observations',
+      highResImagery: false,
+      weatherOverlay: false,
+      countryBorders: false,
+      autoRefresh: false,
+      limitFrameRate: false,
+      reduceAnimations: false,
+      cloudSync: false
+    });
+    console.log('Settings reset');
   };
 
   return (
@@ -112,6 +174,42 @@ const SettingsPage: React.FC = () => {
           label="High Quality Mode (may affect performance)"
           sx={{ mt: 2 }}
         />
+        
+        <FormControlLabel
+          control={
+            <input 
+              type="checkbox" 
+              checked={settings.highResImagery}
+              onChange={() => handleCheckboxChange('highResImagery')}
+            /> 
+          }
+          label="Enable High Resolution Imagery"
+          sx={{ mt: 2 }}
+        />
+        
+        <FormControlLabel
+          control={
+            <input 
+              type="checkbox" 
+              checked={settings.weatherOverlay}
+              onChange={() => handleCheckboxChange('weatherOverlay')}
+            /> 
+          }
+          label="Enable Weather Overlay"
+          sx={{ mt: 2 }}
+        />
+        
+        <FormControlLabel
+          control={
+            <input 
+              type="checkbox" 
+              checked={settings.countryBorders}
+              onChange={() => handleCheckboxChange('countryBorders')}
+            /> 
+          }
+          label="Enable Country Borders"
+          sx={{ mt: 2 }}
+        />
       </Paper>
       
       <Paper sx={{ p: 3, mb: 4 }}>
@@ -134,6 +232,31 @@ const SettingsPage: React.FC = () => {
             max={60}
           />
         </Box>
+        
+        <FormControlLabel
+          control={
+            <input 
+              type="checkbox" 
+              checked={settings.autoRefresh}
+              onChange={() => handleCheckboxChange('autoRefresh')}
+            /> 
+          }
+          label="Auto-refresh Data (every 10 minutes)"
+          sx={{ mt: 2 }}
+        />
+        
+        <FormControl fullWidth margin="normal">
+          <InputLabel id="data-source-label">Data Source</InputLabel>
+          <Select
+            labelId="data-source-label"
+            value={settings.dataSource}
+            label="Data Source"
+            onChange={handleSelectChange}
+          >
+            <MenuItem value="NASA Earth Observations">NASA Earth Observations</MenuItem>
+            <MenuItem value="Other">Other</MenuItem>
+          </Select>
+        </FormControl>
         
         <Divider sx={{ my: 3 }} />
         
@@ -173,49 +296,48 @@ const SettingsPage: React.FC = () => {
             }
             label="Data Source Update Notifications"
           />
+          
+          <FormControlLabel
+            control={
+              <input 
+                type="checkbox" 
+                checked={settings.cloudSync}
+                onChange={() => handleCheckboxChange('cloudSync')}
+              /> 
+            }
+            label="Enable Cloud Sync"
+          />
         </Box>
       </Paper>
       
       <Paper sx={{ p: 3, mb: 4 }}>
         <Typography variant="h6" gutterBottom>
-          Default Map Location
+          Performance
         </Typography>
         
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              label="Latitude"
-              type="number"
-              value={settings.defaultLocation.lat}
-              onChange={(e) => handleNestedChange('defaultLocation', 'lat', parseFloat(e.target.value))}
-              margin="normal"
-              InputProps={{ inputProps: { min: -90, max: 90, step: 0.000001 } }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              label="Longitude"
-              type="number"
-              value={settings.defaultLocation.lng}
-              onChange={(e) => handleNestedChange('defaultLocation', 'lng', parseFloat(e.target.value))}
-              margin="normal"
-              InputProps={{ inputProps: { min: -180, max: 180, step: 0.000001 } }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              label="Default Zoom"
-              type="number"
-              value={settings.defaultLocation.zoom}
-              onChange={(e) => handleNestedChange('defaultLocation', 'zoom', parseInt(e.target.value))}
-              margin="normal"
-              InputProps={{ inputProps: { min: 0, max: 20, step: 1 } }}
-            />
-          </Grid>
-        </Grid>
+        <FormControlLabel
+          control={
+            <input 
+              type="checkbox" 
+              checked={settings.limitFrameRate}
+              onChange={() => handleCheckboxChange('limitFrameRate')}
+            /> 
+          }
+          label="Limit Frame Rate"
+          sx={{ mt: 2 }}
+        />
+        
+        <FormControlLabel
+          control={
+            <input 
+              type="checkbox" 
+              checked={settings.reduceAnimations}
+              onChange={() => handleCheckboxChange('reduceAnimations')}
+            /> 
+          }
+          label="Reduce Animations"
+          sx={{ mt: 2 }}
+        />
       </Paper>
       
       <Paper sx={{ p: 3, mb: 4 }}>
@@ -269,6 +391,19 @@ const SettingsPage: React.FC = () => {
           onClick={handleSaveSettings}
         >
           Save Settings
+        </Button>
+        <Button 
+          variant="outlined" 
+          onClick={clearCache} 
+          sx={{ mr: 2 }}
+        >
+          Clear Cache
+        </Button>
+        <Button 
+          variant="outlined" 
+          onClick={resetSettings}
+        >
+          Reset Settings
         </Button>
       </Box>
     </Container>
