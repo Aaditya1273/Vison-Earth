@@ -12,7 +12,15 @@ code {
     monospace;
 }
 
+/* Allow Cesium UI elements to display properly */
 .cesium-viewer-toolbar, .cesium-viewer-animationContainer, .cesium-viewer-timelineContainer, 
 .cesium-viewer-bottom, .cesium-viewer-fullscreenContainer {
-  display: none !important;
+  display: block !important;
+}
+
+/* Make sure the Cesium canvas fills its container */
+.cesium-widget, .cesium-widget canvas {
+  width: 100% !important;
+  height: 100% !important;
+  touch-action: none;
 }
