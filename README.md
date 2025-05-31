@@ -1,4 +1,4 @@
-# VisionEarth Platform
+# VisionEarth Platform.
 
 VisionEarth is a real-time, interactive 3D globe platform that provides visualization of satellite data, weather patterns, and AI-powered environmental anomaly detection. The platform integrates data from multiple public sources including NASA, NOAA, and Sentinel Hub to deliver a comprehensive view of Earth's environmental conditions.
 
