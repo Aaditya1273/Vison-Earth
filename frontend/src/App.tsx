@@ -6,12 +6,12 @@ import { QueryClient, QueryClientProvider } from 'react-query';
 
 // Import components
 import Layout from './components/Layout';
-import HomePage from './pages/HomePage';
 import EarthViewerPage from './pages/EarthViewerPage';
 import AnomalyDashboardPage from './pages/AnomalyDashboardPage';
 import DataCatalogPage from './pages/DataCatalogPage';
 import SettingsPage from './pages/SettingsPage';
 import NotFoundPage from './pages/NotFoundPage';
+import TestPage from './pages/TestPage';
 
 // Create React Query client
 const queryClient = new QueryClient();
@@ -21,10 +21,10 @@ const theme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#5cbbf2',
+      main: '#e91e63', // Red color for the logo and primary elements
     },
     secondary: {
-      main: '#4ade80',
+      main: '#ff4081',
     },
     background: {
       default: '#0f172a',
@@ -65,11 +65,11 @@ function App() {
         <Router>
           <Layout>
             <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/earth" element={<EarthViewerPage />} />
+              <Route path="/" element={<EarthViewerPage />} />
               <Route path="/anomalies" element={<AnomalyDashboardPage />} />
               <Route path="/catalog" element={<DataCatalogPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/test" element={<TestPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Layout>
