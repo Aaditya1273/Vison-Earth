@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">
+  <circle cx="250" cy="250" r="150" fill="#1a365d" />
+  <path d="M250,100 C166.7,100 100,166.7 100,250 C100,333.3 166.7,400 250,400 C333.3,400 400,333.3 400,250 C400,166.7 333.3,100 250,100 Z M250,380 C177.7,380 120,322.3 120,250 C120,177.7 177.7,120 250,120 C322.3,120 380,177.7 380,250 C380,322.3 322.3,380 250,380 Z" fill="#4299e1" />
+  <path d="M250,140 C188.8,140 140,188.8 140,250 C140,311.2 188.8,360 250,360 C311.2,360 360,311.2 360,250 C360,188.8 311.2,140 250,140 Z" fill="#1a365d" />
+  <path d="M180,190 L220,190 L240,220 L260,220 L280,190 L320,190 L290,250 L320,310 L280,310 L260,280 L240,280 L220,310 L180,310 L210,250 Z" fill="#ffffff" />
+  <circle cx="130" cy="250" r="15" fill="#4299e1" />
+  <circle cx="370" cy="250" r="15" fill="#4299e1" />
+  <path d="M100,100 A212,212 0 0 1 400,100" stroke="#1a365d" stroke-width="20" fill="none" />
+  <path d="M100,400 A212,212 0 0 0 400,400" stroke="#1a365d" stroke-width="20" fill="none" />
+  <text x="130" y="80" font-family="Arial" font-size="40" font-weight="bold" fill="#1a365d">VISION</text>
+  <text x="280" y="80" font-family="Arial" font-size="40" font-weight="bold" fill="#4299e1">EARTH</text>
+  <line x1="250" y1="30" x2="250" y2="120" stroke="#1a365d" stroke-width="5" />
+  <line x1="250" y1="380" x2="250" y2="470" stroke="#1a365d" stroke-width="5" />
+</svg>

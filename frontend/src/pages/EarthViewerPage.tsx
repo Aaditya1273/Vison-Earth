@@ -48,108 +48,7 @@ const EarthViewerPage: React.FC = () => {
   const cesiumContainerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<any>(null);
   const weatherEntityRef = useRef<any>(null);
-  
-  // Function to check if Cesium is loaded
-  const isCesiumLoaded = () => {
-    // Check both the flag and the actual Cesium object
-    const isLoaded = window.CESIUM_LOADED === true && typeof window.Cesium !== 'undefined';
-    console.log(`Cesium loaded check: ${isLoaded ? 'YES' : 'NO'}`);
-    return isLoaded;
-  };
-  
-  // Function to wait for Cesium to be fully loaded
-  const waitForCesium = () => {
-    return new Promise((resolve, reject) => {
-      try {
-        // Check if Cesium is already loaded
-        if (isCesiumLoaded()) {
-          console.log('Cesium already loaded, resolving immediately');
-          resolve(true);
-          return;
-        }
-        
-        console.log('Waiting for Cesium to load...');
-        
-        // Try to load the Cesium loader script if it hasn't been loaded yet
-        if (!document.querySelector('script[src*="/cesium-loader.js"]')) {
-          console.log('Cesium loader script not found, adding it now');
-          const loaderScript = document.createElement('script');
-          loaderScript.src = '/cesium-loader.js';
-          loaderScript.type = 'text/javascript';
-          
-          loaderScript.onload = () => {
-            console.log('Cesium loader script loaded, now waiting for Cesium');
-            // The script will create window.CESIUM_READY promise
-            if (window.CESIUM_READY) {
-              // Use the CESIUM_READY promise to wait for Cesium
-              window.CESIUM_READY
-                .then(() => {
-                  console.log('Cesium loaded via CESIUM_READY promise');
-                  resolve(true);
-                })
-                .catch(error => {
-                  console.error('Error waiting for Cesium:', error);
-                  reject(error);
-                });
-            } else {
-              console.error('CESIUM_READY promise not found from loader');
-              reject(new Error('CESIUM_READY promise not found'));
-            }
-          };
-          
-          loaderScript.onerror = (e) => {
-            console.error('Failed to load Cesium loader script:', e);
-            reject(new Error('Failed to load Cesium loader script'));
-          };
-          
-          document.head.appendChild(loaderScript);
-          
-          // Set a timeout for the loader script itself
-          setTimeout(() => {
-            if (!isCesiumLoaded()) {
-              console.error('Cesium script load timeout');
-              reject(new Error('Cesium script load timeout'));
-            }
-          }, 15000);
-        } else {
-          // Loader script is already in the page, check for the promise
-          if (window.CESIUM_READY) {
-            // Use the CESIUM_READY promise to wait for Cesium
-            window.CESIUM_READY
-              .then(() => {
-                console.log('Cesium loaded via existing CESIUM_READY promise');
-                resolve(true);
-              })
-              .catch(error => {
-                console.error('Error waiting for Cesium:', error);
-                reject(error);
-              });
-          } else {
-            // Start polling as a last resort
-            let attempts = 0;
-            const maxAttempts = 30;
-            const interval = setInterval(() => {
-              attempts++;
-              if (isCesiumLoaded()) {
-                clearInterval(interval);
-                console.log(`Cesium loaded after ${attempts} polling attempts`);
-                resolve(true);
-              } else if (attempts >= maxAttempts) {
-                clearInterval(interval);
-                const error = new Error(`Cesium failed to load after ${maxAttempts} polling attempts`);
-                console.error(error);
-                reject(error);
-              }
-            }, 500);
-          }
-        }
-      } catch (error) {
-        console.error('Error in waitForCesium:', error);
-        reject(error);
-      }
-    });
-  };
-  
+
   // Function to check if WebGL is supported with detailed diagnostics
   const isWebGLSupported = (): boolean => {
     try {
@@ -338,44 +237,6 @@ const EarthViewerPage: React.FC = () => {
       const fixedDate = '2025-06-03';
       console.log('Using fixed date for imagery:', fixedDate);
 
-      // Try to add base Earth layer first (for all layer types)
-      try {
-        console.log('Adding base Blue Marble layer');
-        const baseProvider = new window.Cesium.WebMapTileServiceImageryProvider({
-          url: `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}.jpeg`,
-          layer: 'BlueMarble_ShadedRelief_Bathymetry',
-          style: 'default',
-          format: 'image/jpeg',
-          tileMatrixSetID: 'GoogleMapsCompatible_Level8',
-          maximumLevel: 8,
-          credit: 'NASA Blue Marble'
-        });
-        
-        // Add event listeners for tile loading errors
-        baseProvider.errorEvent.addEventListener((error: any) => {
-          console.error('Base layer tile loading error:', error);
-        });
-        
-        viewer.imageryLayers.addImageryProvider(baseProvider);
-        console.log('Base Blue Marble layer added successfully');
-      } catch (baseLayerError) {
-        console.error('Error adding base Blue Marble layer:', baseLayerError);
-        // Fall back to Cesium's built-in imagery if NASA GIBS fails
-        try {
-          console.log('Falling back to Cesium Natural Earth II for base layer');
-          const fallbackBaseProvider = new window.Cesium.TileMapServiceImageryProvider({
-            url: window.Cesium.buildModuleUrl('Assets/Textures/NaturalEarthII'),
-            maximumLevel: 5,
-            credit: 'Cesium Natural Earth II'
-          });
-          viewer.imageryLayers.addImageryProvider(fallbackBaseProvider);
-          console.log('Fallback base layer added successfully');
-        } catch (fallbackError) {
-          console.error('Even fallback base layer failed:', fallbackError);
-          throw new Error('Failed to add any base imagery layer');
-        }
-      }
-      
       // Add the selected layer
       switch (layerName) {
       case 'Temperature':
@@ -493,131 +354,39 @@ const EarthViewerPage: React.FC = () => {
     }
   };
   
-  // Initialize Cesium viewer when component mounts
+  // Main effect for Cesium initialization (runs once on mount)
   useEffect(() => {
-    // Ensure we start with clean state
-    setLoading(true);
-    setError(null);
-    
-    console.log('EarthViewerPage mounted, initializing Cesium...');
-    
-    // Check if we're running in development mode
-    const isDev = process.env.NODE_ENV === 'development';
-    console.log(`Running in ${isDev ? 'development' : 'production'} mode`);
-    
-    // Timer reference for the delayed Phase 2 initialization
-    let initTimer: number | null = null;
-    
-    // Initialize Cesium viewer and set up the globe
     const initCesium = async () => {
-      try {
-        console.log('Initializing Cesium...');
-        
-        // Check if WebGL is supported
-        if (!isWebGLSupported()) {
-          console.error('WebGL is not supported');
-          setError('WebGL is not supported in your browser. Please try a different browser.');
-          setLoading(false);
-          return;
-        }
-        
-        // Load Cesium dynamically if not loaded yet
-        if (!isCesiumLoaded()) {
-          console.log('Loading Cesium script...');
-          try {
-            try {
-              console.log('Loading Cesium using cesium-loader.js');
-              
-              // First load the cesium-loader.js which handles Cesium initialization
-              const loaderScript = document.createElement('script');
-              loaderScript.src = '/cesium-loader.js';
-              loaderScript.async = false;
-              loaderScript.type = 'text/javascript';
-              
-              // Create a promise to track loader script loading
-              const loaderPromise = new Promise<void>((resolve, reject) => {
-                loaderScript.onload = () => {
-                  console.log('Cesium loader script loaded successfully');
-                  resolve();
-                };
-                loaderScript.onerror = (e) => {
-                  console.error('Failed to load Cesium loader script:', e);
-                  reject(new Error('Failed to load Cesium loader script'));
-                };
-              });
-              
-              // Add the loader script to the document
-              document.head.appendChild(loaderScript);
-              console.log('Cesium loader script added to head');
-              
-              // Wait for loader script to load
-              await loaderPromise;
-              
-              // Now load the main Cesium.js script
-              const mainScript = document.createElement('script');
-              mainScript.src = '/cesium/Cesium.js';
-              mainScript.async = false;
-              mainScript.type = 'text/javascript';
-              document.head.appendChild(mainScript);
-              
-              // Wait for Cesium to be fully loaded using the global promise from cesium-loader.js
-              if (window.CESIUM_READY) {
-                console.log('Waiting for CESIUM_READY promise from loader...');
-                const timeoutPromise = new Promise<void>((_, reject) => {
-                  setTimeout(() => reject(new Error('Cesium script load timeout')), 15000);
-                });
-                
-                await Promise.race([window.CESIUM_READY, timeoutPromise]);
-                console.log('Cesium script loaded and ready');
-              } else {
-                console.error('CESIUM_READY promise not found from loader');
-                throw new Error('CESIUM_READY promise not found');
-              }
-            } catch (error) {
-              console.error('Error during Cesium script loading:', error);
-              throw error;
-            }
-            
-            console.log('Cesium script loaded');
-          } catch (error) {
-            console.error('Error loading Cesium:', error);
-            setError('Failed to load Cesium. Please refresh the page and try again.');
-            setLoading(false);
-            return;
-          }
-        }
-        
-        // Wait for Cesium to be fully loaded
-        const cesiumLoaded = await waitForCesium();
-        if (!cesiumLoaded) {
-          console.error('Failed to load Cesium via waitForCesium');
-          setError('Failed to load Cesium. Please refresh the page and try again.');
-          setLoading(false);
-          return;
-        }
-        
-        // Set Cesium Ion access token
-        window.Cesium.Ion.defaultAccessToken = process.env.REACT_APP_CESIUM_ACCESS_TOKEN || CESIUM_ACCESS_TOKEN;
-        
-        // Initialize the Cesium Viewer
-        if (cesiumContainerRef.current && !viewerRef.current) {
-          console.log('Initializing Cesium viewer');
-          
-          // Implement two-phase initialization for reliable loading
-          console.log('Implementing two-phase Cesium initialization');
-          
-          // PHASE 1: Initialize with simple imagery and terrain that don't require Cesium Ion token
-          console.log('PHASE 1: Creating Cesium viewer with basic configuration');
-          
-          // First, create a simple imagery provider to avoid the blue sphere
-          const defaultImageryProvider = new window.Cesium.TileMapServiceImageryProvider({
-            url: window.Cesium.buildModuleUrl('Assets/Textures/NaturalEarthII'),
-            maximumLevel: 5,
-            credit: 'Cesium Natural Earth II'
-          });
-          
+      setLoading(true);
+      setError(null);
+      console.log('EarthViewerPage mounted, initializing Cesium...');
+
+      // Ensure Cesium is loaded globally (e.g., via script tag in index.html)
+      if (!window.Cesium) {
+        console.error('Cesium global object not found. Ensure Cesium.js is loaded before this component.');
+        setError('Cesium library not loaded. Please check console and ensure index.html includes Cesium.js.');
+        setLoading(false);
+        return;
+      }
+
+      if (!isWebGLSupported()) {
+        console.error('WebGL is not supported');
+        setError('WebGL is not supported in your browser. Please try a different browser.');
+        setLoading(false);
+        return;
+      }
+
+      console.log('EarthViewerPage: After WebGL check. Is window.Cesium defined?', window.Cesium);
+      window.Cesium.Ion.defaultAccessToken = process.env.REACT_APP_CESIUM_ACCESS_TOKEN || CESIUM_ACCESS_TOKEN;
+
+      if (cesiumContainerRef.current && !viewerRef.current) {
+        try {
+          console.log('Creating Cesium viewer with target configuration');
           const viewer = new window.Cesium.Viewer(cesiumContainerRef.current, {
-            terrain: new window.Cesium.EllipsoidTerrainProvider(),
+            terrainProvider: new window.Cesium.CesiumTerrainProvider({
+              url: window.Cesium.IonResource.fromAssetId(1), // Cesium World Terrain
+            }),
+            imageryProvider: new window.Cesium.IonImageryProvider({ assetId: 3 }),
             baseLayerPicker: false,
             geocoder: false,
             homeButton: false,
@@ -626,58 +395,18 @@ const EarthViewerPage: React.FC = () => {
             selectionIndicator: false,
             timeline: false,
             navigationHelpButton: false,
-            animation: false,
+            animation: false, // Animation widget
             creditContainer: document.createElement('div'), // Hide credits
             fullscreenButton: false,
-            requestRenderMode: false, // Enable continuous rendering
+            requestRenderMode: false, // Continuous rendering for dynamic data
             targetFrameRate: 60,
-            imageryProvider: defaultImageryProvider // Use default imagery provider to start
+            // Imagery provider will be set by switchLayer
           });
-          
-          // Store viewer reference
           viewerRef.current = viewer;
-          
-          // Set globe properties for better visibility
+
           viewer.scene.globe.enableLighting = false;
-          viewer.scene.globe.baseColor = new window.Cesium.Color(0.0, 0.0, 0.2, 1.0); // Slight blue base color
-          
-          // Force render to ensure the globe appears
-          viewer.scene.requestRender();
-          
-          // Ensure WebGL context is valid
-          if (!viewer.scene.context || !viewer.scene.context.gl) {
-            console.error('WebGL context is not available after viewer creation');
-            setError('WebGL context initialization failed. Please check your browser settings or try a different browser.');
-            setLoading(false);
-            viewerRef.current = null;
-            throw new Error('WebGL context initialization failed');
-          }
-          
-          // Add event listener for WebGL context lost
-          viewer.scene.canvas.addEventListener('webglcontextlost', function(event: Event) {
-            console.error('WebGL context lost:', event);
-            setError('WebGL context was lost. Please refresh the page.');
-            // Prevent default behavior to allow for potential context restoration
-            if (event.preventDefault) {
-              event.preventDefault();
-            }
-            
-            // Try to handle context restoration
-            console.log('Attempting to handle WebGL context loss gracefully');
-          }, false);
-          
-          // Add event listener for WebGL context restoration
-          viewer.scene.canvas.addEventListener('webglcontextrestored', function(event: Event) {
-            console.log('WebGL context restored:', event);
-            // Clear error message if context is restored
-            setError('');
-            // Request a render to refresh the scene
-            if (viewerRef.current && !viewerRef.current.isDestroyed()) {
-              viewerRef.current.scene.requestRender();
-            }
-          }, false);
-          
-          // Setup camera position - closer view for better visibility
+          viewer.scene.globe.baseColor = window.Cesium.Color.BLUE; // Set to blue so globe is visible even if imagery fails
+
           viewer.camera.setView({
             destination: window.Cesium.Cartesian3.fromDegrees(0, 0, 15000000),
             orientation: {
@@ -686,144 +415,112 @@ const EarthViewerPage: React.FC = () => {
               roll: 0.0
             }
           });
-          
-          // Force another render after camera position change
-          viewer.scene.requestRender();
-          
-          // PHASE 2: Schedule upgrade to higher quality imagery after confirming basic functionality
-          console.log('PHASE 1 complete, scheduling PHASE 2 upgrade in 3 seconds');
-          
-          // Set a timeout to upgrade to higher quality imagery after 3 seconds
-          initTimer = window.setTimeout(() => {
-            try {
-              console.log('PHASE 2: Upgrading to high-quality imagery');
-              
-              if (viewerRef.current && !viewerRef.current.isDestroyed()) {
-                // Set globe base color to transparent for better imagery visibility
-                viewerRef.current.scene.globe.baseColor = new window.Cesium.Color(0, 0, 0, 0);
-                
-                // Verify the viewer is still valid before switching layers
-                if (viewerRef.current.scene && viewerRef.current.scene.canvas) {
-                  // Switch to the current active layer or default to Satellite
-                  try {
-                    switchLayer(activeLayer || 'Satellite');
-                    console.log(`PHASE 2 complete: Upgraded to high-quality imagery with layer: ${activeLayer || 'Satellite'}`);
-                  } catch (layerError) {
-                    console.error('Error switching to high-quality imagery layer:', layerError);
-                    // Fallback to Natural Earth II if layer switch fails
-                    try {
-                      console.log('Falling back to Natural Earth II imagery');
-                      const fallbackProvider = new window.Cesium.TileMapServiceImageryProvider({
-                        url: window.Cesium.buildModuleUrl('Assets/Textures/NaturalEarthII'),
-                        maximumLevel: 5,
-                        credit: 'Cesium Natural Earth II'
-                      });
-                      
-                      // Clear existing layers
-                      while (viewerRef.current.imageryLayers.length > 0) {
-                        viewerRef.current.imageryLayers.remove(viewerRef.current.imageryLayers.get(0));
-                      }
-                      
-                      // Add fallback layer
-                      viewerRef.current.imageryLayers.addImageryProvider(fallbackProvider);
-                      console.log('Fallback to Natural Earth II complete');
-                    } catch (fallbackError) {
-                      console.error('Even fallback imagery failed:', fallbackError);
-                    }
-                  }
-                  
-                  // Force a render to show the updated imagery
-                  viewerRef.current.scene.requestRender();
-                } else {
-                  console.error('Viewer scene or canvas is not available for PHASE 2 upgrade');
-                }
-              } else {
-                console.error('Viewer is no longer valid for PHASE 2 upgrade');
-              }
-            } catch (error) {
-              console.error('Error during PHASE 2 upgrade:', error);
+
+          // Add event listener for WebGL context lost
+          viewer.scene.canvas.addEventListener('webglcontextlost', function(event: Event) {
+            console.error('WebGL context lost:', event);
+            setError('WebGL context was lost. Please refresh the page.');
+            if (event.preventDefault) event.preventDefault();
+          }, false);
+
+          // Add event listener for WebGL context restoration
+          viewer.scene.canvas.addEventListener('webglcontextrestored', function(event: Event) {
+            console.log('WebGL context restored:', event);
+            setError(''); // Clear error
+            if (viewerRef.current && !viewerRef.current.isDestroyed()) {
+              viewerRef.current.scene.requestRender();
             }
-          }, 3000);
+          }, false);
           
-          // Phase 2 will handle switching to the appropriate layer after initialization
-          console.log('Initial Cesium viewer setup complete, waiting for Phase 2 to load high-quality imagery');
-          
-          // Force a render to show the globe
-          viewer.scene.requestRender();
-          
-          console.log('Cesium viewer initialized successfully');
+          // Add NASA GIBS MODIS imagery layer for true color Earth
+try {
+  const nasaLayer = new window.Cesium.WebMapTileServiceImageryProvider({
+    url: 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/wmts.cgi',
+    layer: 'MODIS_Terra_CorrectedReflectance_TrueColor',
+    style: 'default',
+    format: 'image/jpeg',
+    tileMatrixSetID: 'GoogleMapsCompatible',
+    maximumLevel: 8,
+    credit: 'NASA GIBS',
+    tileWidth: 256,
+    tileHeight: 256,
+    dimensions: {
+      time: '2025-06-03', // Use a fixed date or make dynamic
+    },
+  });
+  viewer.imageryLayers.addImageryProvider(nasaLayer);
+  console.log('NASA GIBS MODIS imagery layer added successfully');
+} catch (nasaErr) {
+  console.error('Failed to add NASA GIBS imagery layer', nasaErr);
+}
+// Initial layer will be set by the activeLayer useEffect
+console.log('Cesium viewer core initialized.');
+          // setLoading(false) will be handled by the activeLayer useEffect after the first layer is loaded.
+
+        } catch (initError) {
+          console.error('Error initializing Cesium viewer:', initError);
+          setError('Failed to initialize Earth Viewer. Check console.');
           setLoading(false);
         }
-      } catch (error) {
-        console.error('Error initializing Cesium viewer:', error);
-        setError('Failed to initialize Earth Viewer. Please refresh the page and try again.');
-        setLoading(false);
       }
     };
-    
-    // Call the initialization function
-    initCesium().catch(error => {
-      console.error('Unhandled error during Cesium initialization:', error);
-      setError('Failed to initialize Earth Viewer. Please refresh the page and try again.');
-      setLoading(false);
-    });
-    
-    // Using the initTimer declared earlier in the component
-    
-    // Clean up function
+
+    initCesium();
+
     return () => {
-      // Clear any pending initialization timers
-      if (initTimer !== null) {
-        console.log('Clearing pending initialization timer');
-        window.clearTimeout(initTimer);
-        initTimer = null;
-      }
-      
       // Clean up Cesium viewer when component unmounts
       if (viewerRef.current && !viewerRef.current.isDestroyed()) {
         console.log('Destroying Cesium viewer');
         try {
-          // Stop any active animations or camera flights
-          if (viewerRef.current.clock) {
-            viewerRef.current.clock.onTick.removeAll();
+          if (viewerRef.current.clock) viewerRef.current.clock.onTick.removeAll();
+          if (viewerRef.current.camera?.flyTo) viewerRef.current.camera.cancelFlight();
+          
+          // Type assertion for canvas if necessary, or ensure it exists
+          const canvas = viewerRef.current.scene?.canvas as HTMLCanvasElement | undefined;
+          if (canvas) {
+             // Removing specific listeners can be tricky if anonymous functions were used.
+             // For simplicity, Cesium's destroy() should handle most internal listeners.
+          }
+
+          if (viewerRef.current.entities) viewerRef.current.entities.removeAll();
+          
+          // Ensure imageryLayers exists before trying to access its length or methods
+          if (viewerRef.current.imageryLayers) {
+            while (viewerRef.current.imageryLayers.length > 0) {
+              viewerRef.current.imageryLayers.remove(viewerRef.current.imageryLayers.get(0), true);
+            }
           }
           
-          if (viewerRef.current.camera && viewerRef.current.camera.flyTo) {
-            viewerRef.current.camera.cancelFlight();
-          }
-          
-          // Remove all event listeners
-          if (viewerRef.current.scene && viewerRef.current.scene.canvas) {
-            viewerRef.current.scene.canvas.removeEventListener('webglcontextlost', () => {});
-            viewerRef.current.scene.canvas.removeEventListener('webglcontextrestored', () => {});
-          }
-          
-          // Remove all entities
-          if (viewerRef.current.entities) {
-            viewerRef.current.entities.removeAll();
-          }
-          
-          // Remove all imagery layers first to prevent memory leaks
-          while (viewerRef.current.imageryLayers && viewerRef.current.imageryLayers.length > 0) {
-            viewerRef.current.imageryLayers.remove(viewerRef.current.imageryLayers.get(0), true);
-          }
-          
-          // Destroy the viewer
           viewerRef.current.destroy();
-          viewerRef.current = null;
         } catch (error) {
           console.error('Error during Cesium viewer cleanup:', error);
-          // Still set the ref to null to prevent further access attempts
+        } finally {
           viewerRef.current = null;
         }
       }
-      
-      // Clear any pending timers
-      if (initTimer) {
-        window.clearTimeout(initTimer);
-      }
     };
-  }, [activeLayer]); // Re-initialize if activeLayer changes
+  }, []); // Empty dependency array ensures this runs only once on mount and unmount
+
+  // Effect for handling activeLayer changes and initial layer loading
+  useEffect(() => {
+    if (viewerRef.current && !viewerRef.current.isDestroyed()) {
+      console.log(`Active layer changed to: ${activeLayer}, applying...`);
+      setLoading(true); // Show loading while switching layers
+      try {
+        switchLayer(activeLayer);
+      } catch (e) {
+        console.error(`Error applying layer ${activeLayer}:`, e);
+        setError(`Failed to apply layer: ${activeLayer}`);
+      } finally {
+        setLoading(false);
+      }
+    } else if (!viewerRef.current && !loading && error === null) {
+      // This case might indicate that the viewer initialization is pending or failed silently
+      // and activeLayer changed. setLoading(true) in initCesium should cover this.
+      console.warn('Attempted to switch layer, but viewer is not ready.');
+    }
+  }, [activeLayer]); // Runs when activeLayer changes (and after initial mount due to state update flow)
+
   
   // Handle zoom in
   const handleZoomIn = () => {

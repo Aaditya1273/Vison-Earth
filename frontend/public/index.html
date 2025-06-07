@@ -13,7 +13,10 @@
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     <title>VisionEarth</title>
     <!-- Cesium configuration -->
-    <script src="%PUBLIC_URL%/cesium-loader.js"></script>
+    <script>
+      // IMPORTANT: Tells CesiumJS where to find its assets
+      window.CESIUM_BASE_URL = '%PUBLIC_URL%/cesium/';
+    </script>
     <script src="%PUBLIC_URL%/cesium/Cesium.js"></script>
     <link href="%PUBLIC_URL%/cesium/Widgets/widgets.css" rel="stylesheet">
   </head>
