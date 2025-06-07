@@ -382,11 +382,17 @@ const EarthViewerPage: React.FC = () => {
       if (cesiumContainerRef.current && !viewerRef.current) {
         try {
           console.log('Creating Cesium viewer with target configuration');
+          
+          // Ensure the container has dimensions
+          cesiumContainerRef.current.style.width = '100%';
+          cesiumContainerRef.current.style.height = '100%';
+          
+          // Create a simple ellipsoid terrain provider as fallback
+          const terrainProvider = new window.Cesium.EllipsoidTerrainProvider();
+          
+          // Create viewer with minimal configuration
           const viewer = new window.Cesium.Viewer(cesiumContainerRef.current, {
-            terrainProvider: new window.Cesium.CesiumTerrainProvider({
-              url: window.Cesium.IonResource.fromAssetId(1), // Cesium World Terrain
-            }),
-            imageryProvider: new window.Cesium.IonImageryProvider({ assetId: 3 }),
+            // Basic configuration
             baseLayerPicker: false,
             geocoder: false,
             homeButton: false,
@@ -395,17 +401,88 @@ const EarthViewerPage: React.FC = () => {
             selectionIndicator: false,
             timeline: false,
             navigationHelpButton: false,
-            animation: false, // Animation widget
-            creditContainer: document.createElement('div'), // Hide credits
+            animation: false,
+            creditContainer: document.createElement('div'),
             fullscreenButton: false,
-            requestRenderMode: false, // Continuous rendering for dynamic data
+            
+            // Use simple ellipsoid terrain provider for maximum compatibility
+            terrainProvider: new window.Cesium.EllipsoidTerrainProvider(),
+            
+            // Start with no base layer - we'll add NASA GIBS after initialization
+            imageryProvider: false,
+            
+            // Performance settings
+            requestRenderMode: true,
             targetFrameRate: 60,
+            
+            // Scene settings
+            scene3DOnly: true,
+            skyAtmosphere: false,
+            skyBox: false,
+            
+            // Disable effects that might cause issues
+            shadows: false,
+            fxaa: false,
+            orderIndependentTranslucency: false,
+            
+            // Use software rendering if needed
+            contextOptions: {
+              webgl: {
+                alpha: true,
+                depth: true,
+                stencil: true,
+                antialias: true,
+                premultipliedAlpha: true,
+                preserveDrawingBuffer: true,
+                failIfMajorPerformanceCaveat: false
+              }
+            }
             // Imagery provider will be set by switchLayer
           });
           viewerRef.current = viewer;
 
           viewer.scene.globe.enableLighting = false;
           viewer.scene.globe.baseColor = window.Cesium.Color.BLUE; // Set to blue so globe is visible even if imagery fails
+
+          // Add NASA GIBS base layer
+          try {
+            const fixedDate = '2025-06-03';
+            const nasaProvider = new window.Cesium.WebMapTileServiceImageryProvider({
+              url: `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_CorrectedReflectance_TrueColor/default/${fixedDate}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}.jpg`,
+              layer: 'VIIRS_SNPP_CorrectedReflectance_TrueColor',
+              style: 'default',
+              format: 'image/jpeg',
+              tileMatrixSetID: 'GoogleMapsCompatible_Level8',
+              maximumLevel: 8,
+              credit: 'NASA GIBS',
+              enablePickFeatures: false
+            });
+            
+            // Remove any existing layers
+            while (viewer.imageryLayers.length > 0) {
+              viewer.imageryLayers.remove(viewer.imageryLayers.get(0), true);
+            }
+            
+            // Add NASA layer
+            viewer.imageryLayers.addImageryProvider(nasaProvider);
+            console.log('NASA GIBS layer added successfully');
+          } catch (nasaError) {
+            console.error('Failed to add NASA GIBS layer:', nasaError);
+            // Fallback to Cesium World Imagery if NASA fails
+            const worldImagery = new window.Cesium.IonImageryProvider({ assetId: 3 });
+            viewer.imageryLayers.addImageryProvider(worldImagery);
+            console.log('Falling back to Cesium World Imagery');
+          }
+          
+          // Set the camera to a good initial position
+          viewer.camera.flyTo({
+            destination: window.Cesium.Cartesian3.fromDegrees(0, 0, 20000000),
+            orientation: {
+              heading: 0.0,
+              pitch: -window.Cesium.Math.PI_OVER_TWO,
+              roll: 0.0
+            }
+          });
 
           viewer.camera.setView({
             destination: window.Cesium.Cartesian3.fromDegrees(0, 0, 15000000),
@@ -434,21 +511,36 @@ const EarthViewerPage: React.FC = () => {
           
           // Add NASA GIBS MODIS imagery layer for true color Earth
 try {
-  const nasaLayer = new window.Cesium.WebMapTileServiceImageryProvider({
-    url: 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/wmts.cgi',
-    layer: 'MODIS_Terra_CorrectedReflectance_TrueColor',
-    style: 'default',
-    format: 'image/jpeg',
-    tileMatrixSetID: 'GoogleMapsCompatible',
-    maximumLevel: 8,
-    credit: 'NASA GIBS',
-    tileWidth: 256,
-    tileHeight: 256,
-    dimensions: {
-      time: '2025-06-03', // Use a fixed date or make dynamic
-    },
-  });
-  viewer.imageryLayers.addImageryProvider(nasaLayer);
+  try {
+    // Add NASA GIBS layer
+    // Use a fixed date for NASA GIBS imagery to ensure consistent display
+    const fixedDate = '2025-06-03';
+    
+    const nasaLayer = new window.Cesium.WebMapTileServiceImageryProvider({
+      url: 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/wmts.cgi',
+      layer: 'MODIS_Terra_CorrectedReflectance_TrueColor',
+      style: 'default',
+      format: 'image/jpeg',
+      tileMatrixSetID: 'GoogleMapsCompatible',
+      maximumLevel: 8,
+      credit: 'NASA GIBS',
+      tileWidth: 256,
+      tileHeight: 256,
+      dimensions: { time: fixedDate }
+    });
+    viewer.imageryLayers.addImageryProvider(nasaLayer);
+    console.log('NASA GIBS MODIS imagery layer added successfully');
+  } catch (nasaErr) {
+    console.error('Failed to add NASA GIBS imagery layer, falling back:', nasaErr);
+    // Add fallback provider
+    const fallbackProvider = new window.Cesium.TileMapServiceImageryProvider({
+      url: window.Cesium.buildModuleUrl('Assets/Textures/NaturalEarthII'),
+      maximumLevel: 5,
+      credit: 'Cesium Natural Earth II'
+    });
+    viewer.imageryLayers.addImageryProvider(fallbackProvider);
+    console.log('Fallback imagery provider added');
+  }
   console.log('NASA GIBS MODIS imagery layer added successfully');
 } catch (nasaErr) {
   console.error('Failed to add NASA GIBS imagery layer', nasaErr);
@@ -472,7 +564,7 @@ console.log('Cesium viewer core initialized.');
       if (viewerRef.current && !viewerRef.current.isDestroyed()) {
         console.log('Destroying Cesium viewer');
         try {
-          if (viewerRef.current.clock) viewerRef.current.clock.onTick.removeAll();
+          // if (viewerRef.current.clock) viewerRef.current.clock.onTick.removeAll();
           if (viewerRef.current.camera?.flyTo) viewerRef.current.camera.cancelFlight();
           
           // Type assertion for canvas if necessary, or ensure it exists
@@ -556,7 +648,16 @@ console.log('Cesium viewer core initialized.');
 
   // Render the Earth viewer UI
   return (
-    <Box sx={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
+    <Box sx={{ 
+      width: '100vw', 
+      height: '100vh', 
+      position: 'fixed', 
+      top: 0, 
+      left: 0, 
+      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
       {/* If there's an error, show the fallback Earth viewer */}
       {error && <SimpleEarthViewerFallback />}
       
@@ -598,13 +699,28 @@ console.log('Cesium viewer core initialized.');
           <div 
             ref={cesiumContainerRef}
             style={{
+              flex: 1,
               width: '100%',
               height: '100%',
-              position: 'absolute',
-              top: 0,
-              left: 0,
+              position: 'relative',
+              overflow: 'hidden',
+              backgroundColor: '#000011'
             }}
-          />
+          >
+            {loading && (
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                color: 'white',
+                zIndex: 1000
+              }}>
+                <CircularProgress />
+                <div>Loading Earth...</div>
+              </div>
+            )}
+          </div>
           
           {/* Right vertical mini toolbar - styled like Zoom Earth */}
           {!loading && (
